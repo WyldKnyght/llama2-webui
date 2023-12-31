@@ -515,7 +515,7 @@ async def get_models(
         "object": "list",
         "data": [
             {
-                "id": settings.backend_type + " default model"
+                "id": f"{settings.backend_type} default model"
                 if settings.model_path == ""
                 else settings.model_path,
                 "object": "model",

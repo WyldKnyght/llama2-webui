@@ -6,8 +6,7 @@ from hashlib import md5
 def read_csv_to_dict_list(file_path):
     with open(file_path, mode="r", encoding="utf-8") as file:
         reader = csv.DictReader(file)
-        list_of_dicts = [row for row in reader]
-        return list_of_dicts
+        return list(reader)
 
 
 def split_list_with_key(lst, dict_key):
