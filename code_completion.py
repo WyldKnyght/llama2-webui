@@ -55,12 +55,12 @@ def main():
     )
 
     def generate(
-        prompt,
-        temperature=0.9,
-        max_new_tokens=256,
-        top_p=0.95,
-        repetition_penalty=1.0,
-    ):
+            prompt,
+            temperature=0.9,
+            max_new_tokens=256,
+            top_p=0.95,
+            repetition_penalty=1.0,
+        ):
         temperature = float(temperature)
         if temperature < 1e-2:
             temperature = 1e-2
@@ -85,11 +85,7 @@ def main():
 
         stream = llama2_wrapper.__call__(prompt, **generate_kwargs)
 
-        if fim_mode:
-            output = prefix
-        else:
-            output = prompt
-
+        output = prefix if fim_mode else prompt
         # for response in stream:
         #     output += response
         #     yield output
@@ -97,12 +93,13 @@ def main():
 
         previous_token = ""
         for response in stream:
-            if any([end_token in response for end_token in [EOS_STRING, EOT_STRING]]):
+            if any(
+                end_token in response for end_token in [EOS_STRING, EOT_STRING]
+            ):
                 if fim_mode:
                     output += suffix
                     yield output
                     return output
-                    print("output", output)
                 else:
                     return output
             else:

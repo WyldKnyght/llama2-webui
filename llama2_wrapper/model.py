@@ -65,12 +65,12 @@ class LLAMA2_WRAPPER:
         self.default_llamacpp_path = "./models/llama-2-7b-chat.Q4_0.gguf"
         self.default_gptq_path = "./models/Llama-2-7b-Chat-GPTQ"
         # Download default ggml/gptq model
-        if self.model_path == "":
+        if not self.model_path:
             print("Model path is empty.")
             if self.backend_type is BackendType.LLAMA_CPP:
-                print("Use default llama.cpp model path: " + self.default_llamacpp_path)
+                print(f"Use default llama.cpp model path: {self.default_llamacpp_path}")
                 if not os.path.exists(self.default_llamacpp_path):
-                    print("Start downloading model to: " + self.default_llamacpp_path)
+                    print(f"Start downloading model to: {self.default_llamacpp_path}")
                     from huggingface_hub import hf_hub_download
 
                     hf_hub_download(
@@ -82,9 +82,9 @@ class LLAMA2_WRAPPER:
                     print("Model exists in ./models/llama-2-7b-chat.Q4_0.gguf.")
                 self.model_path = self.default_llamacpp_path
             elif self.backend_type is BackendType.GPTQ:
-                print("Use default gptq model path: " + self.default_gptq_path)
+                print(f"Use default gptq model path: {self.default_gptq_path}")
                 if not os.path.exists(self.default_gptq_path):
-                    print("Start downloading model to: " + self.default_gptq_path)
+                    print(f"Start downloading model to: {self.default_gptq_path}")
                     from huggingface_hub import snapshot_download
 
                     snapshot_download(
@@ -92,7 +92,7 @@ class LLAMA2_WRAPPER:
                         local_dir=self.default_gptq_path,
                     )
                 else:
-                    print("Model exists in " + self.default_gptq_path)
+                    print(f"Model exists in {self.default_gptq_path}")
                 self.model_path = self.default_gptq_path
 
         self.init_tokenizer()
@@ -150,15 +150,14 @@ class LLAMA2_WRAPPER:
                 load_in_8bit=load_in_8bit,
             )
         else:
-            print(backend_type + "not implemented.")
+            print(f"{backend_type}not implemented.")
         return model
 
     @classmethod
     def create_llama2_tokenizer(cls, model_path):
         from transformers import AutoTokenizer
 
-        tokenizer = AutoTokenizer.from_pretrained(model_path)
-        return tokenizer
+        return AutoTokenizer.from_pretrained(model_path)
 
     def get_token_length(
         self,
@@ -211,6 +210,7 @@ class LLAMA2_WRAPPER:
         Yields:
             The generated text.
         """
+        outputs = []
         if self.backend_type is BackendType.LLAMA_CPP:
             result = self.model(
                 prompt=prompt,
@@ -222,7 +222,6 @@ class LLAMA2_WRAPPER:
                 repeat_penalty=repetition_penalty,
                 **kwargs,
             )
-            outputs = []
             for part in result:
                 text = part["choices"][0]["text"]
                 outputs.append(text)
@@ -246,12 +245,11 @@ class LLAMA2_WRAPPER:
                 # num_beams=1,
             )
             generate_kwargs = (
-                generate_kwargs if kwargs is None else {**generate_kwargs, **kwargs}
+                generate_kwargs if kwargs is None else generate_kwargs | kwargs
             )
             t = Thread(target=self.model.generate, kwargs=generate_kwargs)
             t.start()
 
-            outputs = []
             for text in streamer:
                 outputs.append(text)
                 yield "".join(outputs)
@@ -340,8 +338,7 @@ class LLAMA2_WRAPPER:
 
                 def chunk_generator(chunks):
                     for part in chunks:
-                        chunk = part["choices"][0]["text"]
-                        yield chunk
+                        yield part["choices"][0]["text"]
 
                 chunks: Iterator[str] = chunk_generator(completion_or_chunks)
                 return chunks
@@ -360,7 +357,7 @@ class LLAMA2_WRAPPER:
                 # num_beams=1,
             )
             generate_kwargs = (
-                generate_kwargs if kwargs is None else {**generate_kwargs, **kwargs}
+                generate_kwargs if kwargs is None else generate_kwargs | kwargs
             )
             if stream:
                 from transformers import TextIteratorStreamer
@@ -425,7 +422,7 @@ class LLAMA2_WRAPPER:
         completion_id: str = f"cmpl-{str(uuid.uuid4())}"
         created: int = int(time.time())
         model_name: str = (
-            self.backend_type + " default model"
+            f"{self.backend_type} default model"
             if self.model_path == ""
             else self.model_path
         )
@@ -458,7 +455,7 @@ class LLAMA2_WRAPPER:
                 # num_beams=1,
             )
             generate_kwargs = (
-                generate_kwargs if kwargs is None else {**generate_kwargs, **kwargs}
+                generate_kwargs if kwargs is None else generate_kwargs | kwargs
             )
             if stream:
                 from transformers import TextIteratorStreamer
@@ -570,7 +567,7 @@ class LLAMA2_WRAPPER:
         completion_id: str = f"cmpl-{str(uuid.uuid4())}"
         created: int = int(time.time())
         model_name: str = (
-            self.backend_type + " default model"
+            f"{self.backend_type} default model"
             if self.model_path == ""
             else self.model_path
         )
@@ -604,7 +601,7 @@ class LLAMA2_WRAPPER:
                 # num_beams=1,
             )
             generate_kwargs = (
-                generate_kwargs if kwargs is None else {**generate_kwargs, **kwargs}
+                generate_kwargs if kwargs is None else generate_kwargs | kwargs
             )
             if stream:
                 from transformers import TextIteratorStreamer
@@ -621,7 +618,7 @@ class LLAMA2_WRAPPER:
 
                 def chunk_generator(chunks):
                     yield {
-                        "id": "chat" + completion_id,
+                        "id": f"chat{completion_id}",
                         "model": model_name,
                         "created": created,
                         "object": "chat.completion.chunk",
@@ -637,7 +634,7 @@ class LLAMA2_WRAPPER:
                     }
                     for part in enumerate(chunks):
                         yield {
-                            "id": "chat" + completion_id,
+                            "id": f"chat{completion_id}",
                             "model": model_name,
                             "created": created,
                             "object": "chat.completion.chunk",
@@ -664,7 +661,7 @@ class LLAMA2_WRAPPER:
                     output_ids[0][prompt_tokens_len:], skip_special_tokens=True
                 )
                 chatcompletion: ChatCompletion = {
-                    "id": "chat" + completion_id,
+                    "id": f"chat{completion_id}",
                     "object": "chat.completion",
                     "created": created,
                     "model": model_name,
@@ -759,8 +756,10 @@ def get_prompt(
         prompt string.
     """
     texts = [f"[INST] <<SYS>>\n{system_prompt}\n<</SYS>>\n\n"]
-    for user_input, response in chat_history:
-        texts.append(f"{user_input.strip()} [/INST] {response.strip()} </s><s> [INST] ")
+    texts.extend(
+        f"{user_input.strip()} [/INST] {response.strip()} </s><s> [INST] "
+        for user_input, response in chat_history
+    )
     texts.append(f"{message.strip()} [/INST]")
     return "".join(texts)
 
@@ -782,6 +781,6 @@ class BackendType(Enum):
         elif "cpp" in backend_name_lower:
             backend_type = BackendType.LLAMA_CPP
         else:
-            raise Exception("Unknown backend: " + backend_name)
-            # backend_type = BackendType.UNKNOWN
+            raise Exception(f"Unknown backend: {backend_name}")
+                # backend_type = BackendType.UNKNOWN
         return backend_type
